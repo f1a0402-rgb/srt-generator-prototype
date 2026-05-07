@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { constants, promises as fs } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import ffmpegStatic from "ffmpeg-static";
 import { buildSubtitleForceStyle, type SubtitleStyle } from "@/lib/subtitle-style";
@@ -8,6 +9,8 @@ type FfmpegCommand = {
   command: string;
   resolvedPath: string;
 };
+
+const require = createRequire(import.meta.url);
 
 async function canAccessFile(filePath: string) {
   try {
@@ -37,6 +40,38 @@ async function resolveFfmpegCommand(): Promise<FfmpegCommand> {
       command: ffmpegStatic,
       resolvedPath: ffmpegStatic
     };
+  }
+
+  const packageRootCandidates: string[] = [];
+
+  try {
+    packageRootCandidates.push(path.dirname(require.resolve("ffmpeg-static/package.json")));
+  } catch {
+    // ignore
+  }
+
+  packageRootCandidates.push(path.join(process.cwd(), "node_modules", "ffmpeg-static"));
+
+  const binaryNames =
+    process.platform === "win32"
+      ? ["ffmpeg.exe"]
+      : process.platform === "linux"
+        ? process.arch === "arm64"
+          ? ["ffmpeg-linux-arm64", "ffmpeg"]
+          : ["ffmpeg-linux-x64", "ffmpeg"]
+        : ["ffmpeg"];
+
+  for (const packageRoot of packageRootCandidates) {
+    for (const binaryName of binaryNames) {
+      const candidatePath = path.join(packageRoot, binaryName);
+
+      if (await canAccessFile(candidatePath)) {
+        return {
+          command: candidatePath,
+          resolvedPath: candidatePath
+        };
+      }
+    }
   }
 
   return {
