@@ -1,6 +1,6 @@
 # SRT Generator Prototype
 
-動画をアップロードすると、**Macの中だけで文字起こし**して、SRT字幕ファイルと字幕付き動画を作れる試作アプリです。  
+動画をアップロードすると、**PCの中だけで文字起こし**して、SRT字幕ファイルと字幕付き動画を作れる試作アプリです。  
 **OpenAI APIキーは不要**で、**ローカル処理**で動き、**無料で試せる**構成です。
 
 ## 主なポイント
@@ -52,39 +52,136 @@
 
 ## 必要なもの
 
-- macOS
+- macOS または Windows
 - Node.js 20 以上
 - インターネット接続
 
 補足:
 - APIキーは不要です
 - 最初の1回だけ、ローカル文字起こしモデルのダウンロードに時間がかかります
+- `ffmpeg-static` を同梱しているため、多くの環境では追加インストールなしで動きます
+- もし `ffmpeg の起動に失敗しました` と表示された場合は、下の `ffmpeg のインストール` を試してください
+
+## ffmpeg のインストール
+
+このアプリは通常、同梱されている `ffmpeg-static` を使います。  
+ただし、Windows 環境などで `ffmpeg` がうまく起動しない場合は、手動インストールして PATH を通すか、`FFMPEG_PATH` を設定してください。
+
+### macOS
+
+`Homebrew` を使える場合は、次でインストールできます。
+
+```bash
+brew install ffmpeg
+```
+
+### Windows
+
+Windows では次のどちらかが分かりやすいです。
+
+#### 方法1. winget を使う
+
+PowerShell を開いて、次を実行します。
+
+```powershell
+winget install --id Gyan.FFmpeg -e
+```
+
+#### 方法2. 手動で入れる
+
+1. FFmpeg の公式ダウンロードページを開く  
+   [FFmpeg Download](https://ffmpeg.org/download.html)
+2. Windows 向けビルド配布先へ進む
+3. zip をダウンロードして展開する
+4. `ffmpeg.exe` が入っている `bin` フォルダを PATH に追加する
+
+#### PATH の設定が難しいとき
+
+`ffmpeg.exe` の場所を `FFMPEG_PATH` 環境変数で指定できます。
+
+例:
+
+```powershell
+$env:FFMPEG_PATH="C:\ffmpeg\bin\ffmpeg.exe"
+```
 
 ## セットアップ方法
 
-### 1. このプロジェクトを開く
+### macOS
 
-ターミナルでこのフォルダに移動します。
+#### 1. このプロジェクトを開く
 
 ```bash
 cd /Users/tanakatakako/Documents/Codex/2026-05-07-srt-web-srt-ok-next-js
 ```
 
-### 2. 必要な部品を入れる
+#### 2. 必要な部品を入れる
 
 ```bash
 npm install
 ```
 
-### 3. 開発サーバーを起動する
+#### 3. 開発サーバーを起動する
 
 ```bash
 npm run dev
 ```
 
-### 4. ブラウザで開く
+#### 4. ブラウザで開く
 
 [http://localhost:3000](http://localhost:3000)
+
+### Windows
+
+#### 1. このプロジェクトを開く
+
+PowerShell かコマンドプロンプトで、プロジェクトフォルダへ移動します。
+
+```powershell
+cd C:\path\to\srt-generator-prototype
+```
+
+#### 2. 必要な部品を入れる
+
+```powershell
+npm install
+```
+
+#### 3. 開発サーバーを起動する
+
+```powershell
+npm run dev
+```
+
+#### 4. ブラウザで開く
+
+[http://localhost:3000](http://localhost:3000)
+
+## エラー時の見方
+
+### `ffmpeg の起動に失敗しました`
+
+次を確認してください。
+
+- `npm install` が最後まで終わっているか
+- `ffmpeg-static` が入っているか
+- Windows の場合は `winget` で `ffmpeg` を入れるか、`FFMPEG_PATH` を設定したか
+
+### `字幕付き動画の生成に失敗しました`
+
+次を確認してください。
+
+- 動画形式が `mp4 / mov / webm` か
+- 動画サイズが大きすぎないか
+- `ffmpeg` が正しく動いているか
+
+### 文字起こしが失敗する
+
+次を確認してください。
+
+- 最初のモデルダウンロード中ではないか
+- PC の空き容量が足りているか
+- 動画に音声が入っているか
 
 ## 使い方
 
@@ -134,7 +231,7 @@ npm run dev
 ### Q. 完全に無料ですか？
 
 はい、OpenAI API の課金は発生しません。  
-ただし、Mac上で処理するため、PCの性能や空き容量は必要です。
+ただし、PC上で処理するため、PCの性能や空き容量は必要です。
 
 ### Q. 最初だけ時間がかかるのはなぜ？
 

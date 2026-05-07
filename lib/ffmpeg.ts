@@ -1,34 +1,67 @@
 import { spawn } from "node:child_process";
 import { constants, promises as fs } from "node:fs";
 import path from "node:path";
+import ffmpegStatic from "ffmpeg-static";
 import { buildSubtitleForceStyle, type SubtitleStyle } from "@/lib/subtitle-style";
 
-function getFfmpegBinaryPath() {
-  const platform = process.platform;
-  const arch = process.arch;
+type FfmpegCommand = {
+  command: string;
+  resolvedPath: string;
+};
 
-  if (platform === "darwin") {
-    return path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg");
+async function canAccessFile(filePath: string) {
+  try {
+    await fs.access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveFfmpegCommand(): Promise<FfmpegCommand> {
+  const envPath = process.env.FFMPEG_PATH?.trim();
+
+  if (envPath) {
+    const absoluteEnvPath = path.resolve(envPath);
+
+    if (await canAccessFile(absoluteEnvPath)) {
+      return {
+        command: absoluteEnvPath,
+        resolvedPath: absoluteEnvPath
+      };
+    }
   }
 
-  if (platform === "linux") {
-    const fileName = arch === "arm64" ? "ffmpeg-linux-arm64" : "ffmpeg-linux-x64";
-    return path.join(process.cwd(), "node_modules", "ffmpeg-static", fileName);
+  if (ffmpegStatic && (await canAccessFile(ffmpegStatic))) {
+    return {
+      command: ffmpegStatic,
+      resolvedPath: ffmpegStatic
+    };
   }
 
-  if (platform === "win32") {
-    return path.join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg.exe");
+  return {
+    command: "ffmpeg",
+    resolvedPath: "ffmpeg (PATH)"
+  };
+}
+
+function getFfmpegSetupHelp() {
+  if (process.platform === "win32") {
+    return "Windows では ffmpeg-static が使えない場合、ffmpeg をインストールして PATH を通すか、FFMPEG_PATH 環境変数に ffmpeg.exe の場所を設定してください。README の Windows セットアップ手順も確認してください。";
   }
 
-  throw new Error(`この環境では ffmpeg の実行ファイル場所を特定できませんでした: ${platform} ${arch}`);
+  if (process.platform === "darwin") {
+    return "macOS では ffmpeg-static が使えない場合、ffmpeg をインストールするか、FFMPEG_PATH 環境変数に ffmpeg の場所を設定してください。README の macOS セットアップ手順も確認してください。";
+  }
+
+  return "ffmpeg をインストールするか、FFMPEG_PATH 環境変数に ffmpeg の場所を設定してください。README のセットアップ手順も確認してください。";
 }
 
 async function runFfmpeg(args: string[], failureMessage: string) {
-  const ffmpegBinary = getFfmpegBinaryPath();
-  await fs.access(ffmpegBinary, constants.X_OK);
+  const ffmpegCommand = await resolveFfmpegCommand();
 
   await new Promise<void>((resolve, reject) => {
-    const ffmpeg = spawn(ffmpegBinary, args);
+    const ffmpeg = spawn(ffmpegCommand.command, args);
 
     let stderr = "";
 
@@ -39,7 +72,7 @@ async function runFfmpeg(args: string[], failureMessage: string) {
     ffmpeg.on("error", (error) => {
       reject(
         new Error(
-          `ffmpeg の起動に失敗しました。実行ファイル: ${ffmpegBinary} / 詳細: ${error.message}`
+          `ffmpeg の起動に失敗しました。使用しようとした場所: ${ffmpegCommand.resolvedPath} / 詳細: ${error.message} / ${getFfmpegSetupHelp()}`
         )
       );
     });
@@ -50,7 +83,11 @@ async function runFfmpeg(args: string[], failureMessage: string) {
         return;
       }
 
-      reject(new Error(`${failureMessage}${stderr ? ` ffmpeg: ${stderr}` : ""}`));
+      reject(
+        new Error(
+          `${failureMessage}${stderr ? ` ffmpeg: ${stderr}` : ""} / 使用しようとした場所: ${ffmpegCommand.resolvedPath}`
+        )
+      );
     });
   });
 }
