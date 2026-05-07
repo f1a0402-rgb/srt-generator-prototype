@@ -24,22 +24,37 @@ Thumbs.db
 
 # uploaded videos and generated media
 *.mp4
+*.MP4
 *.mov
+*.MOV
 *.webm
+*.WEBM
 *.mkv
+*.MKV
 *.avi
+*.AVI
 *.m4v
+*.M4V
 *.wav
+*.WAV
 *.mp3
+*.MP3
 *.m4a
+*.M4A
 *.aac
+*.AAC
 *.ogg
+*.OGG
 *.flac
+*.FLAC
 
 # generated subtitles
 *.srt
+*.SRT
 *.vtt
+*.VTT
 *.ass
+*.ASS
 
 # temp directories
 tmp/
